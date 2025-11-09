@@ -4,13 +4,15 @@ from collections import defaultdict
 from atproto import AtUri, CAR, firehose_models, FirehoseSubscribeReposClient, models, parse_subscribe_repos_message
 from atproto.exceptions import FirehoseError
 
+from server import config
 from server.database import SubscriptionState
 from server.logger import logger
+from server.database import watch_list
+from server.client import client
 
 _INTERESTED_RECORDS = {
-    models.AppBskyFeedLike: models.ids.AppBskyFeedLike,
-    models.AppBskyFeedPost: models.ids.AppBskyFeedPost,
-    models.AppBskyGraphFollow: models.ids.AppBskyGraphFollow,
+    models.AppBskyFeedRepost: models.ids.AppBskyFeedRepost,
+    models.AppBskyGraphListitem: models.ids.AppBskyGraphListitem,
 }
 
 
@@ -51,6 +53,12 @@ def _get_ops_by_type(commit: models.ComAtprotoSyncSubscribeRepos.Commit) -> defa
 
 
 def run(name, operations_callback, stream_stop_event=None):
+    # create the author share watch list
+    watch_list.clear()
+    return_list = client.app.bsky.graph.get_list(models.AppBskyGraphGetList.Params(list=config.LIST_NAME))
+    for item in return_list.items:
+        watch_list[item.subject.did] = True
+    
     while stream_stop_event is None or not stream_stop_event.is_set():
         try:
             _run(name, operations_callback, stream_stop_event)

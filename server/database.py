@@ -3,7 +3,7 @@ from datetime import datetime
 import peewee
 
 db = peewee.SqliteDatabase('feed_database.db')
-
+watch_list = {}
 
 class BaseModel(peewee.Model):
     class Meta:
@@ -11,13 +11,13 @@ class BaseModel(peewee.Model):
 
 
 class Post(BaseModel):
-    uri = peewee.CharField(index=True)
+    orig_uri = peewee.CharField(index=True)
+    uri = peewee.CharField()
     cid = peewee.CharField()
-    reply_parent = peewee.CharField(null=True, default=None)
-    reply_root = peewee.CharField(null=True, default=None)
     indexed_at = peewee.DateTimeField(default=datetime.utcnow)
 
-
+# this keeps track of where in the firehose the events were last read
+# this allows the system to catch up to the stream after a restart
 class SubscriptionState(BaseModel):
     service = peewee.CharField(unique=True)
     cursor = peewee.BigIntegerField()

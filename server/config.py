@@ -7,6 +7,9 @@ from server.logger import logger
 
 load_dotenv()
 
+HANDLE = os.environ.get('HANDLE')
+APP_PASS = os.environ.get('PASSWORD')
+
 SERVICE_DID = os.environ.get('SERVICE_DID')
 HOSTNAME = os.environ.get('HOSTNAME')
 FLASK_RUN_FROM_CLI = os.environ.get('FLASK_RUN_FROM_CLI')
@@ -26,6 +29,7 @@ if not FEED_URI:
     raise RuntimeError('Publish your feed first (run publish_feed.py) to obtain Feed URI. '
                        'Set this URI to "FEED_URI" environment variable.')
 
+LIST_NAME = os.environ.get('LIST_NAME', '')
 
 def _get_bool_env_var(value: str) -> bool:
     if value is None:
