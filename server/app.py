@@ -10,6 +10,12 @@ from flask import Flask, jsonify, request
 from server.algos import algos
 from server.data_filter import operations_callback
 
+from server.auth import AuthorizationError, validate_auth
+
+import logging
+from server.logger import logger
+
+logger.setLevel(logging.ERROR)
 app = Flask(__name__)
 
 stream_stop_event = threading.Event()
@@ -63,22 +69,24 @@ def describe_feed_generator():
     }
     return jsonify(response)
 
-
 @app.route('/xrpc/app.bsky.feed.getFeedSkeleton', methods=['GET'])
 def get_feed_skeleton():
-    feed = request.args.get('feed', default=None, type=str)
-    algo = algos.get(feed)
+    feed_id = request.args.get('feed', default=None, type=str)
+    algo = algos.get(feed_id)
     if not algo:
         return 'Unsupported algorithm', 400
 
-    # Example of how to check auth if giving user-specific results:
-    """
-    from server.auth import AuthorizationError, validate_auth
+    algo_owner = feed_id.split('/')[2]
+
+    # check auth if giving user-specific results:
+    
     try:
         requester_did = validate_auth(request)
+
+        if requester_did != algo_owner:
+            return 'Unauthorized', 401
     except AuthorizationError:
         return 'Unauthorized', 401
-    """
 
     try:
         cursor = request.args.get('cursor', default=None, type=str)

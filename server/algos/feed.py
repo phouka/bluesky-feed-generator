@@ -25,7 +25,7 @@ def handler(cursor: Optional[str], limit: int) -> dict:
         indexed_at = datetime.fromtimestamp(int(indexed_at) / 1000)
         posts = posts.where(((Post.indexed_at == indexed_at) & (Post.cid < cid)) | (Post.indexed_at < indexed_at))
 
-    feed = [{'post': post.uri} for post in posts]
+    feed = [{'post': post.orig_uri, "reason": { "$type": "app.bsky.feed.defs#skeletonReasonRepost", "repost": post.uri } } for post in posts]
 
     cursor = CURSOR_EOF
     last_post = posts[-1] if posts else None

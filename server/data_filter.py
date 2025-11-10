@@ -37,12 +37,12 @@ def should_ignore_post(created_post: dict) -> bool:
         return True
 
     if config.IGNORE_REPLY_POSTS and record.reply:
-        # logger.debug(f'Ignoring reply post: {uri}')
+        logger.debug(f'Ignoring reply post: {uri}')
         return True
 
     # check against author in list, filter out if not in list
     if author not in watch_list:
-        # logger.debug(f'Ignoring repost from unlisted author: {uri}')
+        logger.debug(f'Ignoring repost from unlisted author: {uri}')
         return True
 
     # check subject against author in list, and filter out if in list
