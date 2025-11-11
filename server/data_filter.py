@@ -6,7 +6,7 @@ from atproto import models
 
 from server import config
 from server.logger import logger
-from server.database import db, Post, watch_list
+from server.database import db, Post, watch_list, ignore_list
 from server.client import client
 
 
@@ -53,6 +53,10 @@ def should_ignore_post(created_post: dict) -> bool:
 
     if orig_author in watch_list:
         logger.debug(f'Ignoring repost of post from listed author: {uri}')
+        return True
+    
+    if orig_author in ignore_list:
+        logger.debug(f'Ignoring repost of post from ignored author: {uri}')
         return True
 
     # check if we already have this original post in the database

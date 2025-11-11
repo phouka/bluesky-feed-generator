@@ -4,6 +4,7 @@ import peewee
 
 db = peewee.SqliteDatabase('feed_database.db')
 watch_list = {}
+ignore_list = {}
 
 class BaseModel(peewee.Model):
     class Meta:

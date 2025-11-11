@@ -7,7 +7,7 @@ from atproto.exceptions import FirehoseError
 from server import config
 from server.database import SubscriptionState
 from server.logger import logger
-from server.database import watch_list
+from server.database import watch_list, ignore_list
 from server.client import client
 
 _INTERESTED_RECORDS = {
@@ -52,12 +52,49 @@ def _get_ops_by_type(commit: models.ComAtprotoSyncSubscribeRepos.Commit) -> defa
     return operation_by_type
 
 
+import time
+def get_list_contents(list_uri: str) -> dict:
+    users = []
+    cursor = None
+    while True:
+        new_list = client.app.bsky.graph.get_list(models.AppBskyGraphGetList.Params(list=list_uri, cursor=cursor, limit=100))
+        for item in new_list.items:
+            users.append(item)
+        if new_list.cursor is None:
+            break
+        time.sleep(0.1)
+        cursor = new_list.cursor
+    return users
+
+from atproto_identity.resolver import IdResolver
+
 def run(name, operations_callback, stream_stop_event=None):
+    """
+    created_list_item = client.app.bsky.graph.listitem.create(
+        list_owner,
+        models.AppBskyGraphListitem.Record(
+            list=shares_uncategorized,
+            subject=user,
+            created_at=client.get_current_time_iso(),
+        ),
+    )
+    deleted_list_item = client.app.bsky.graph.listitem.delete(
+        list_owner,
+        AtUri.from_str(user).rkey,
+    )
+    """
+
     # create the author share watch list
     watch_list.clear()
-    return_list = client.app.bsky.graph.get_list(models.AppBskyGraphGetList.Params(list=config.LIST_NAME))
-    for item in return_list.items:
+    list_items = get_list_contents(config.LIST_NAME)
+    for item in list_items:
         watch_list[item.subject.did] = True
+
+    # create the ignore list
+    ignore_list.clear()
+    list_items = get_list_contents(config.IGNORE_LIST_NAME)
+    for item in list_items:
+        ignore_list[item.subject.did] = True
     
     while stream_stop_event is None or not stream_stop_event.is_set():
         try:

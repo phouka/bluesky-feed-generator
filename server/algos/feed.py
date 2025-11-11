@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from server import config
-from server.database import Post
+from server.database import Post, watch_list, ignore_list
 
 uri = config.FEED_URI
 CURSOR_EOF = 'eof'
@@ -25,7 +25,18 @@ def handler(cursor: Optional[str], limit: int) -> dict:
         indexed_at = datetime.fromtimestamp(int(indexed_at) / 1000)
         posts = posts.where(((Post.indexed_at == indexed_at) & (Post.cid < cid)) | (Post.indexed_at < indexed_at))
 
-    feed = [{'post': post.orig_uri, "reason": { "$type": "app.bsky.feed.defs#skeletonReasonRepost", "repost": post.uri } } for post in posts]
+    feed = []
+    for post in posts:
+        url_parts = post.orig_uri.split('/')
+        orig_author = url_parts[2]
+
+        if orig_author in watch_list:
+            continue
+        
+        if orig_author in ignore_list:
+            continue
+
+        feed.append({'post': post.orig_uri, "reason": { "$type": "app.bsky.feed.defs#skeletonReasonRepost", "repost": post.uri } })
 
     cursor = CURSOR_EOF
     last_post = posts[-1] if posts else None

@@ -31,6 +31,8 @@ if not FEED_URI:
 
 LIST_NAME = os.environ.get('LIST_NAME', '')
 
+IGNORE_LIST_NAME = os.environ.get('IGNORE_LIST_NAME', '')
+
 def _get_bool_env_var(value: str) -> bool:
     if value is None:
         return False
