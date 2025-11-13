@@ -7,7 +7,7 @@ from atproto.exceptions import FirehoseError
 from server import config
 from server.database import SubscriptionState
 from server.logger import logger
-from server.database import watch_list, ignore_list
+from server.database import watch_lookup, watch_list, ignore_lookup, ignore_list
 from server.client import client
 
 _INTERESTED_RECORDS = {
@@ -47,7 +47,9 @@ def _get_ops_by_type(commit: models.ComAtprotoSyncSubscribeRepos.Commit) -> defa
                     break
 
         if op.action == 'delete':
-            operation_by_type[uri.collection]['deleted'].append({'uri': str(uri)})
+            for record_type, record_nsid in _INTERESTED_RECORDS.items():
+                if uri.collection == record_nsid:
+                    operation_by_type[record_nsid]['deleted'].append({'uri': str(uri)})
 
     return operation_by_type
 
@@ -85,16 +87,22 @@ def run(name, operations_callback, stream_stop_event=None):
     """
 
     # create the author share watch list
+    watch_lookup.clear()
     watch_list.clear()
-    list_items = get_list_contents(config.LIST_NAME)
-    for item in list_items:
-        watch_list[item.subject.did] = True
+    for user_list in config.FOLLOW_LIST:
+        list_items = get_list_contents(user_list)
+        for item in list_items:
+            watch_lookup[item.uri] = item.subject.did
+            watch_list[item.subject.did] = True
 
     # create the ignore list
+    ignore_lookup.clear()
     ignore_list.clear()
-    list_items = get_list_contents(config.IGNORE_LIST_NAME)
-    for item in list_items:
-        ignore_list[item.subject.did] = True
+    for user_list in config.IGNORE_LIST:
+        list_items = get_list_contents(user_list)
+        for item in list_items:
+            ignore_lookup[item.uri] = item.subject.did
+            ignore_list[item.subject.did] = True
     
     while stream_stop_event is None or not stream_stop_event.is_set():
         try:

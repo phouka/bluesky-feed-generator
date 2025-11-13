@@ -83,7 +83,7 @@ def get_feed_skeleton():
     try:
         requester_did = validate_auth(request)
 
-        if requester_did != algo_owner:
+        if requester_did not in config.USER_LIST:
             return 'Unauthorized', 401
     except AuthorizationError:
         return 'Unauthorized', 401

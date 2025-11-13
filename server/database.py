@@ -3,7 +3,10 @@ from datetime import datetime
 import peewee
 
 db = peewee.SqliteDatabase('feed_database.db')
+watch_lookup = {}
 watch_list = {}
+
+ignore_lookup = {}
 ignore_list = {}
 
 class BaseModel(peewee.Model):

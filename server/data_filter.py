@@ -6,7 +6,7 @@ from atproto import models
 
 from server import config
 from server.logger import logger
-from server.database import db, Post, watch_list, ignore_list
+from server.database import db, Post, watch_lookup, watch_list, ignore_lookup, ignore_list
 from server.client import client
 
 
@@ -96,14 +96,25 @@ def operations_callback(ops: defaultdict) -> None:
         # add to local list if the item is from the target list
         record_list = created_post['record'].list
         list_item = created_post['uri']
-        if record_list == config.LIST_NAME:
-            watch_list[list_item] = True
+        for user_list in config.FOLLOW_LIST:
+            if record_list == user_list:
+                watch_list[list_item] = True
+        for user_list in config.IGNORE_LIST:
+            if record_list == user_list:
+                ignore_list[list_item] = True
 
     for post in ops[models.ids.AppBskyGraphListitem]['deleted']:
         # remove from local list if the item is from the target list
-        list_item = post['uri']
-        if list_item in watch_list:
+        list_uri = post['uri']
+        if list_uri in watch_lookup:
+            list_item = watch_lookup[list_uri]
+            del watch_lookup[list_uri]
             del watch_list[list_item]
+        
+        if list_uri in ignore_lookup:
+            list_item = ignore_lookup[list_uri]
+            del ignore_lookup[list_uri]
+            del ignore_list[list_item]
 
 
     posts_to_create = []

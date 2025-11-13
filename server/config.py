@@ -29,9 +29,11 @@ if not FEED_URI:
     raise RuntimeError('Publish your feed first (run publish_feed.py) to obtain Feed URI. '
                        'Set this URI to "FEED_URI" environment variable.')
 
-LIST_NAME = os.environ.get('LIST_NAME', '')
+USER_LIST = os.environ.get('USER_LIST', '').split(',')
 
-IGNORE_LIST_NAME = os.environ.get('IGNORE_LIST_NAME', '')
+FOLLOW_LIST = os.environ.get('FOLLOW_LIST', '').split(',')
+
+IGNORE_LIST = os.environ.get('IGNORE_LIST', '').split(',')
 
 def _get_bool_env_var(value: str) -> bool:
     if value is None:
