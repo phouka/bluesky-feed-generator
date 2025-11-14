@@ -14,10 +14,29 @@ class BaseModel(peewee.Model):
         database = db
 
 
-class Post(BaseModel):
-    orig_uri = peewee.CharField(index=True)
-    uri = peewee.CharField()
+class Repost(BaseModel):
+    uri = peewee.CharField(index=True)
+    via_uri = peewee.CharField()
+    orig_uri = peewee.CharField()
     cid = peewee.CharField()
+    indexed_at = peewee.DateTimeField(default=datetime.utcnow)
+
+
+class User(BaseModel):
+    did = peewee.CharField(index=True)
+    is_follower = peewee.BooleanField(default=False)
+    # number of times seen self
+    exposure = peewee.IntegerField(default=0)
+    # number of times interacted (just reposts)
+    engagement = peewee.IntegerField(default=0)
+    # number of followers not following self
+    unique_followers = peewee.IntegerField(default=0)
+    # number of times followers-that-are-not-following-self have seen self
+    #follower_exposure = peewee.IntegerField(default=0)
+    # number of times followers-that-are-not-following-self have engaged with self
+    #follower_engagement = peewee.IntegerField(default=0)
+    # likelihood of engaging with self posts
+    chance_to_engage = peewee.FloatField(default=0.0)
     indexed_at = peewee.DateTimeField(default=datetime.utcnow)
 
 # this keeps track of where in the firehose the events were last read
@@ -29,4 +48,4 @@ class SubscriptionState(BaseModel):
 
 if db.is_closed():
     db.connect()
-    db.create_tables([Post, SubscriptionState])
+    db.create_tables([Repost, User, SubscriptionState])

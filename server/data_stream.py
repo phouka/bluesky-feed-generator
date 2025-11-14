@@ -13,6 +13,7 @@ from server.client import client
 _INTERESTED_RECORDS = {
     models.AppBskyFeedRepost: models.ids.AppBskyFeedRepost,
     models.AppBskyGraphListitem: models.ids.AppBskyGraphListitem,
+    models.AppBskyGraphFollow: models.ids.AppBskyGraphFollow,
 }
 
 
@@ -86,7 +87,29 @@ def run(name, operations_callback, stream_stop_event=None):
     )
     """
 
-    # create the author share watch list
+    # from Self get all posts to add to total_oc_posts
+    # for each post in total_oc_posts, get followers at the time of post and add (follower, increment 1) to total_exposed_accounts
+    # for each post in total_oc_posts, get shares and add (sharer, share) to total_sharing_accounts
+    # for each (account, share) in total_sharing_accounts, get followers DURING THE SHARE and add (follower, increment 1) to total_exposed_accounts
+    # total_exposed_accounts is the set of all accounts that have seen self
+
+    # when post, get followers at time of post and add (follower, increment 1) to total_exposed_accounts
+    # when share, add (sharing account, share) to total_sharing_accounts + add (sharing account, increment 1) to total_engaged_Accounts
+    # + get followers DURING TIME OF SHARE and add (follower, increment 1) to total_exposed_accounts
+
+    # TODO:
+    # clear all is_follower from users who have them
+    # read all followers and update the users table
+
+    # from target users in Similar-Audience list, get all posts and add to total_similar_posts
+    # for each post in total_similar_posts, get shares and add sharing_account to total_exposed_Accounts if not already exists
+    # when the followed user is a repost, add reposting account to final_table with default values
+    # this does not include the target user's own reposts
+
+    # iter 0: do not prioritize, just show all shares of these peoples' posts
+    # iter 1: filter out the people that follow self
+    # iter 1: based on follows, find chance of following self, and prioritize the shares from people with high chances
+    # iter 2: based on engagements, find chance of engaging with self, and prioritize the shares from people with high chances
     watch_lookup.clear()
     watch_list.clear()
     for user_list in config.FOLLOW_LIST:

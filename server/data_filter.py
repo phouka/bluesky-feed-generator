@@ -6,7 +6,7 @@ from atproto import models
 
 from server import config
 from server.logger import logger
-from server.database import db, Post, watch_lookup, watch_list, ignore_lookup, ignore_list
+from server.database import db, Repost, watch_lookup, watch_list, ignore_lookup, ignore_list
 from server.client import client
 
 
@@ -40,9 +40,9 @@ def should_ignore_post(created_post: dict) -> bool:
         logger.debug(f'Ignoring reply post: {uri}')
         return True
 
-    # check against author in list, filter out if not in list
-    if author not in watch_list:
-        logger.debug(f'Ignoring repost from unlisted author: {uri}')
+    # check against reposter in ignore list, filter out if in list
+    if author in ignore_list:
+        logger.debug(f'Ignoring repost from ignored reposter: {uri}')
         return True
 
     # check subject against author in list, and filter out if in list
@@ -51,23 +51,12 @@ def should_ignore_post(created_post: dict) -> bool:
     orig_author = url_parts[2]
     post_rkey = url_parts[-1]
 
-    if orig_author in watch_list:
-        logger.debug(f'Ignoring repost of post from listed author: {uri}')
-        return True
-    
-    if orig_author in ignore_list:
-        logger.debug(f'Ignoring repost of post from ignored author: {uri}')
+    if orig_author not in watch_list:
+        logger.debug(f'Ignoring repost of post from unlisted author: {uri}')
         return True
 
-    # check if we already have this original post in the database
-    try:
-        existing_post = Post.get(Post.orig_uri == orig_uri)
-    except Post.DoesNotExist:
-        existing_post = None
+    # TODO: check against post author in is_follower
 
-    if existing_post:
-        logger.debug(f'Ignoring repost of already existing post: {uri}')
-        return True
 
     # retrieve the original post and check if it has media attachments
     orig_record = client.get_post(post_rkey, orig_author).value
@@ -116,20 +105,34 @@ def operations_callback(ops: defaultdict) -> None:
             del ignore_lookup[list_uri]
             del ignore_list[list_item]
 
+    for created_post in ops[models.ids.AppBskyGraphFollow]['created']:
+        # TODO: update database to mark user as is_follower
+        pass
+
+    for created_post in ops[models.ids.AppBskyGraphFollow]['deleted']:
+        # TODO: update database to mark user is_follower to False
+        pass
+
 
     posts_to_create = []
     for created_post in ops[models.ids.AppBskyFeedRepost]['created']:
         record = created_post['record']
-        orig_uri = record.subject.uri
 
         if should_ignore_post(created_post):
             continue
 
+        try:
+            via_uri = record.via.uri
+        except AttributeError as e:
+            via_uri = ""
+        
+        orig_uri = record.subject.uri
         # the primary key should be the original post id
         # if a new repost appears, do not update
         post_dict = {
-            'orig_uri': orig_uri,
             'uri': created_post['uri'],
+            'via_uri': via_uri,
+            'orig_uri': orig_uri,
             'cid': created_post['cid'],
         }
         posts_to_create.append(post_dict)
@@ -143,5 +146,5 @@ def operations_callback(ops: defaultdict) -> None:
     if posts_to_create:
         with db.atomic():
             for post_dict in posts_to_create:
-                Post.create(**post_dict)
+                Repost.create(**post_dict)
         logger.debug(f'Added to feed: {len(posts_to_create)}')

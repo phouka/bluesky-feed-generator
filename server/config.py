@@ -33,7 +33,7 @@ USER_LIST = os.environ.get('USER_LIST', '').split(',')
 
 FOLLOW_LIST = os.environ.get('FOLLOW_LIST', '').split(',')
 
-IGNORE_LIST = os.environ.get('IGNORE_LIST', '').split(',')
+IGNORE_LIST = []#os.environ.get('IGNORE_LIST', '').split(',')
 
 def _get_bool_env_var(value: str) -> bool:
     if value is None:

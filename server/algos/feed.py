@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from server import config
-from server.database import Post, watch_list, ignore_list
+from server.database import Repost, watch_list, ignore_list
 
 uri = config.FEED_URI
 CURSOR_EOF = 'eof'
@@ -17,7 +17,7 @@ def handler(cursor: Optional[str], limit: int) -> dict:
 
     feed_posts = []
     while True:
-        posts = Post.select().order_by(Post.cid.desc()).order_by(Post.indexed_at.desc()).limit(limit)
+        posts = Repost.select().order_by(Repost.cid.desc()).order_by(Repost.indexed_at.desc()).limit(limit)
         if cursor:
             if cursor == CURSOR_EOF:
                 break
@@ -27,17 +27,20 @@ def handler(cursor: Optional[str], limit: int) -> dict:
 
             indexed_at, cid = cursor_parts
             indexed_at = datetime.fromtimestamp(int(indexed_at) / 1000)
-            posts = posts.where(((Post.indexed_at == indexed_at) & (Post.cid < cid)) | (Post.indexed_at < indexed_at))
+            posts = posts.where(((Repost.indexed_at == indexed_at) & (Repost.cid < cid)) | (Repost.indexed_at < indexed_at))
 
         
         for post in posts:
-            url_parts = post.orig_uri.split('/')
-            orig_author = url_parts[2]
+            url_parts = post.uri.split('/')
+            author = url_parts[2]
 
-            if orig_author in watch_list:
+            if author in ignore_list:
                 continue
             
-            if orig_author in ignore_list:
+            orig_url_parts = post.orig_uri.split('/')
+            orig_author = orig_url_parts[2]
+
+            if orig_author not in watch_list:
                 continue
 
             feed_posts.append(post)
