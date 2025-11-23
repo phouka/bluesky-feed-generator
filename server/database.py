@@ -32,13 +32,27 @@ AGG_FOLLOWER = 0
 AGG_LIKE = 1
 AGG_REPOST = 2
 
+class MainPost(BaseModel):
+
+    uri = peewee.CharField(index=True)
+    cid = peewee.CharField()
+    created_at = peewee.DateTimeField()
+    indexed_at = peewee.DateTimeField(default=datetime.utcnow)
+
+class Exposure(BaseModel):
+
+    uri = peewee.CharField(index=True)
+    seen_by = peewee.CharField(index=True)
+
 class Engagement(BaseModel):
 
     uri = peewee.CharField(index=True)
+    author = peewee.CharField(index=True)
     event_type = peewee.SmallIntegerField()
     create_delete = peewee.SmallIntegerField()
     via_uri = peewee.CharField()
     orig_uri = peewee.CharField()
+    orig_author = peewee.CharField(index=True)
     cid = peewee.CharField()
     created_at = peewee.DateTimeField()
     indexed_at = peewee.DateTimeField(default=datetime.utcnow)
@@ -76,4 +90,4 @@ class SubscriptionState(BaseModel):
 
 if db.is_closed():
     db.connect()
-    db.create_tables([Repost, User, AggStat, Engagement, SubscriptionState])
+    db.create_tables([Repost, User, AggStat, Engagement, SubscriptionState, Exposure, MainPost])

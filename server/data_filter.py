@@ -6,10 +6,15 @@ from atproto import models
 
 from server import config
 from server.logger import logger
-from server.database import db, Repost, User, Engagement, watch_lookup, watch_list, ignore_lookup, ignore_list
+from server.database import db, Repost, User, Engagement, Exposure
+from server.database import watch_lookup, watch_list, ignore_lookup, ignore_list
 from server.database import OP_CREATE, OP_DELETE, ENGAGEMENT_LIKE, ENGAGEMENT_REPOST
 from server.client import client
 
+def extract_author(uri: str) -> str:
+    url_parts = uri.split('/')
+    author = url_parts[2]
+    return author
 
 def is_archive_post(record: 'models.AppBskyFeedPost.Record') -> bool:
     # Sometimes users will import old posts from Twitter/X which con flood a feed with
@@ -88,11 +93,18 @@ def should_add_target_repost(created_post: dict) -> bool:
 def should_add_self_stat(created_event: dict) -> bool:
 
     record = created_event['record']
+    uri = created_event['uri']
 
+    if config.IGNORE_ARCHIVED_POSTS and is_archive_post(record):
+        logger.debug(f'Ignoring archived post: {uri}')
+        return False
+
+    if config.IGNORE_REPLY_POSTS and record.reply:
+        logger.debug(f'Ignoring reply post: {uri}')
+        return False
+    
     orig_uri = record.subject.uri
-    url_parts = orig_uri.split('/')
-    orig_author = url_parts[2]
-    post_rkey = url_parts[-1]
+    orig_author = extract_author(orig_uri)
 
     if orig_author == config.get_self():
         return True
@@ -104,9 +116,7 @@ def should_add_busy_notif(created_event: dict) -> bool:
     record = created_event['record']
 
     orig_uri = record.subject.uri
-    url_parts = orig_uri.split('/')
-    orig_author = url_parts[2]
-    post_rkey = url_parts[-1]
+    orig_author = extract_author(orig_uri)
 
     # TODO: non-follower needs it to track notification busyness
     # user = User.get_or_none(User.did == orig_author)
@@ -147,8 +157,7 @@ def operations_callback(ops: defaultdict) -> None:
     for op_event in ops[models.ids.AppBskyGraphFollow]['created']:
         # update database to mark user as is_follower
         uri = op_event['uri']
-        url_parts = uri.split('/')
-        follower = url_parts[2]
+        follower = extract_author(uri)
 
         record = op_event['record']
         follow_target = record.subject
@@ -178,7 +187,6 @@ def operations_callback(ops: defaultdict) -> None:
 
     # self stat
     # on like/share on self, log an event
-    # TODO?: on every day, take a snapshot of followers, and then create an agg_stat entry
     self_stat_created = []
 
     # TODO:
@@ -199,10 +207,12 @@ def operations_callback(ops: defaultdict) -> None:
             
             event_dict = {
                 'uri': op_event['uri'],
+                'author': extract_author(op_event['uri']),
                 'event_type': ENGAGEMENT_LIKE,
                 'create_delete': OP_CREATE,
                 'via_uri': via_uri,
                 'orig_uri': record.subject.uri,
+                'orig_author': extract_author(record.subject.uri),
                 'created_at': datetime.datetime.strptime(record.created_at, '%Y-%m-%dT%H:%M:%S.%fZ'),
                 'cid': op_event['cid'],
             }
@@ -256,10 +266,12 @@ def operations_callback(ops: defaultdict) -> None:
             
             event_dict = {
                 'uri': op_event['uri'],
+                'author': extract_author(op_event['uri']),
                 'event_type': ENGAGEMENT_REPOST,
                 'create_delete': OP_CREATE,
                 'via_uri': via_uri,
                 'orig_uri': record.subject.uri,
+                'orig_author': extract_author(record.subject.uri),
                 'cid': op_event['cid'],
                 'created_at': datetime.datetime.strptime(record.created_at, '%Y-%m-%dT%H:%M:%S.%fZ'),
             }
@@ -269,7 +281,7 @@ def operations_callback(ops: defaultdict) -> None:
         with db.atomic():
             for post_dict in target_reposts_created:
                 Repost.create(**post_dict)
-                author = post_dict['uri'].split('/')[2]
+                author = extract_author(post_dict['uri'])
                 User.create(did=author)
         logger.debug(f'Added to feed: {len(target_reposts_created)}')
 

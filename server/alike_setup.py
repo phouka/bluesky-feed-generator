@@ -139,6 +139,8 @@ def update_periodic():
         if to_next_day > 0:
             time.sleep(to_next_day)
 
+        # on every day, take a snapshot of followers, likes. shares, and then create an agg_stat entry
+
         cur_day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         prev_day = cur_day - timedelta(days=1)
 
@@ -148,27 +150,30 @@ def update_periodic():
         follow_count = len(followers)
         AggStat.create(
             event_type=AGG_FOLLOWER,
-            time=prev_day,
+            time=cur_day,
             amount=follow_count
         )
         
+        self_did = config.get_self()
         like_count = Engagement.select().where(
                 (Engagement.event_type == ENGAGEMENT_LIKE) &
+                (Engagement.orig_author == self_did) &
                 (Engagement.created_at < cur_day) &
                 (Engagement.created_at >= prev_day)).count()
         AggStat.create(
             event_type=AGG_LIKE,
-            time=prev_day,
+            time=cur_day,
             amount=like_count
         )
 
         repost_count = Engagement.select().where(
                 (Engagement.event_type == ENGAGEMENT_REPOST) &
+                (Engagement.orig_author == self_did) &
                 (Engagement.created_at < cur_day) &
                 (Engagement.created_at >= prev_day)).count()
         AggStat.create(
             event_type=AGG_REPOST,
-            time=prev_day,
+            time=cur_day,
             amount=repost_count
         )
         
