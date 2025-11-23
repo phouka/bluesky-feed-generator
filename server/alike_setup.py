@@ -135,9 +135,9 @@ def update_periodic():
     while True:
         last_time = datetime.now(timezone.utc)
 
-        seconds_to_next_hour = 3600 - (last_time.minute * 60 + last_time.second + last_time.microsecond / 1_000_000)
-        if seconds_to_next_hour > 0:
-            time.sleep(seconds_to_next_hour)
+        to_next_day = 3600 * 24 - (last_time.hour * 60 * 60 + last_time.minute * 60 + last_time.second + last_time.microsecond / 1_000_000)
+        if to_next_day > 0:
+            time.sleep(to_next_day)
 
         cur_day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         prev_day = cur_day - timedelta(days=1)
@@ -148,7 +148,7 @@ def update_periodic():
         follow_count = len(followers)
         AggStat.create(
             event_type=AGG_FOLLOWER,
-            time=cur_day,
+            time=prev_day,
             amount=follow_count
         )
         
@@ -158,7 +158,7 @@ def update_periodic():
                 (Engagement.created_at >= prev_day)).count()
         AggStat.create(
             event_type=AGG_LIKE,
-            time=cur_day,
+            time=prev_day,
             amount=like_count
         )
 
@@ -168,7 +168,7 @@ def update_periodic():
                 (Engagement.created_at >= prev_day)).count()
         AggStat.create(
             event_type=AGG_REPOST,
-            time=cur_day,
+            time=prev_day,
             amount=repost_count
         )
         
