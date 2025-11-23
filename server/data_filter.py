@@ -6,7 +6,8 @@ from atproto import models
 
 from server import config
 from server.logger import logger
-from server.database import db, Repost, watch_lookup, watch_list, ignore_lookup, ignore_list
+from server.database import db, Repost, User, Engagement, watch_lookup, watch_list, ignore_lookup, ignore_list
+from server.database import OP_CREATE, OP_DELETE, ENGAGEMENT_LIKE, ENGAGEMENT_REPOST
 from server.client import client
 
 
@@ -27,25 +28,25 @@ def is_archive_post(record: 'models.AppBskyFeedPost.Record') -> bool:
     return now - created_at > archived_threshold
 
 
-def should_ignore_post(created_post: dict) -> bool:
+def should_add_target_repost(created_post: dict) -> bool:
     author = created_post['author']
     record = created_post['record']
     uri = created_post['uri']
 
     if config.IGNORE_ARCHIVED_POSTS and is_archive_post(record):
         logger.debug(f'Ignoring archived post: {uri}')
-        return True
+        return False
 
     if config.IGNORE_REPLY_POSTS and record.reply:
         logger.debug(f'Ignoring reply post: {uri}')
-        return True
+        return False
 
     # check against reposter in ignore list, filter out if in list
     if author in ignore_list:
         logger.debug(f'Ignoring repost from ignored reposter: {uri}')
-        return True
+        return False
 
-    # check subject against author in list, and filter out if in list
+    # check subject against author in list, and filter out if not in list
     orig_uri = record.subject.uri
     url_parts = orig_uri.split('/')
     orig_author = url_parts[2]
@@ -53,9 +54,13 @@ def should_ignore_post(created_post: dict) -> bool:
 
     if orig_author not in watch_list:
         logger.debug(f'Ignoring repost of post from unlisted author: {uri}')
-        return True
+        return False
 
-    # TODO: check against post author in is_follower
+    # check against post author is follower
+    follower = User.get_or_none((User.did == author) & (User.follow_id != ''))
+    if follower is not None:
+        logger.debug(f'Ignoring repost from follower: {uri}')
+        return False
 
 
     # retrieve the original post and check if it has media attachments
@@ -65,7 +70,7 @@ def should_ignore_post(created_post: dict) -> bool:
 
     if not post_with_images and not post_with_video:
          logger.debug(f'Ignoring non-media post: {uri}')
-         return True
+         return False
 
     inlined_text = orig_record.text.replace('\n', ' ')
 
@@ -77,14 +82,45 @@ def should_ignore_post(created_post: dict) -> bool:
         f': {inlined_text}'
     )
 
+    return True
+
+
+def should_add_self_stat(created_event: dict) -> bool:
+
+    record = created_event['record']
+
+    orig_uri = record.subject.uri
+    url_parts = orig_uri.split('/')
+    orig_author = url_parts[2]
+    post_rkey = url_parts[-1]
+
+    if orig_author == config.get_self():
+        return True
+    
     return False
 
+def should_add_busy_notif(created_event: dict) -> bool:
+
+    record = created_event['record']
+
+    orig_uri = record.subject.uri
+    url_parts = orig_uri.split('/')
+    orig_author = url_parts[2]
+    post_rkey = url_parts[-1]
+
+    # TODO: non-follower needs it to track notification busyness
+    # user = User.get_or_none(User.did == orig_author)
+    # if user is not None:
+    #     if user.follow_id == '':
+    #         return True
+
+    return False
 
 def operations_callback(ops: defaultdict) -> None:
-    for created_post in ops[models.ids.AppBskyGraphListitem]['created']:
+    for op_event in ops[models.ids.AppBskyGraphListitem]['created']:
         # add to local list if the item is from the target list
-        record_list = created_post['record'].list
-        list_item = created_post['uri']
+        record_list = op_event['record'].list
+        list_item = op_event['uri']
         for user_list in config.FOLLOW_LIST:
             if record_list == user_list:
                 watch_list[list_item] = True
@@ -92,9 +128,9 @@ def operations_callback(ops: defaultdict) -> None:
             if record_list == user_list:
                 ignore_list[list_item] = True
 
-    for post in ops[models.ids.AppBskyGraphListitem]['deleted']:
+    for op_event in ops[models.ids.AppBskyGraphListitem]['deleted']:
         # remove from local list if the item is from the target list
-        list_uri = post['uri']
+        list_uri = op_event['uri']
         if list_uri in watch_lookup:
             list_item = watch_lookup[list_uri]
             del watch_lookup[list_uri]
@@ -105,37 +141,137 @@ def operations_callback(ops: defaultdict) -> None:
             del ignore_lookup[list_uri]
             del ignore_list[list_item]
 
-    for created_post in ops[models.ids.AppBskyGraphFollow]['created']:
-        # TODO: update database to mark user as is_follower
-        pass
+    # Self Follows
+    # when follow to self is created, update the user table to reflect it
+    self_follows_created = []
+    for op_event in ops[models.ids.AppBskyGraphFollow]['created']:
+        # update database to mark user as is_follower
+        uri = op_event['uri']
+        url_parts = uri.split('/')
+        follower = url_parts[2]
 
-    for created_post in ops[models.ids.AppBskyGraphFollow]['deleted']:
-        # TODO: update database to mark user is_follower to False
-        pass
-
-
-    posts_to_create = []
-    for created_post in ops[models.ids.AppBskyFeedRepost]['created']:
-        record = created_post['record']
-
-        if should_ignore_post(created_post):
+        record = op_event['record']
+        follow_target = record.subject
+        req_follow_target = config.get_self()
+        if follow_target != req_follow_target:
             continue
+        follow_dict = {
+            'did': follower,
+            'uri': uri,
+        }
+        self_follows_created.append(follow_dict)
+
+    if self_follows_created:
+        with db.atomic():
+            for follow_dict in self_follows_created:
+                follower = follow_dict['did']
+                uri = follow_dict['uri']
+                User.get_or_create(did=follower, defaults={'did': follower})
+                User.update({User.follow_id:uri}).where(User.did == follower).execute()
+
+    self_follows_deleted = ops[models.ids.AppBskyGraphFollow]['deleted']
+    if self_follows_deleted:
+        follow_uris_to_delete = [post['uri'] for post in self_follows_deleted]
+        # update database to mark user is_follower to False
+        User.update({User.follow_id:''}).where(User.follow_id.in_(follow_uris_to_delete)).execute()
+        logger.debug(f'Deleted from follows: {len(follow_uris_to_delete)}')
+
+    # self stat
+    # on like/share on self, log an event
+    # TODO?: on every day, take a snapshot of followers, and then create an agg_stat entry
+    self_stat_created = []
+
+    # TODO:
+    # Notif Busyness
+    # need a log of all like/share/follow events with timestamps, targeted at self and logged users
+    # when share/like, check if user is in list and is not follower.  add event if so
+    # TODO:
+    # phase out after 72 hours
+    for op_event in ops[models.ids.AppBskyFeedLike]['created']:
+        record = op_event['record']
 
         try:
             via_uri = record.via.uri
         except AttributeError as e:
             via_uri = ""
+
+        if should_add_self_stat(op_event):
+            
+            event_dict = {
+                'uri': op_event['uri'],
+                'event_type': ENGAGEMENT_LIKE,
+                'create_delete': OP_CREATE,
+                'via_uri': via_uri,
+                'orig_uri': record.subject.uri,
+                'created_at': datetime.datetime.strptime(record.created_at, '%Y-%m-%dT%H:%M:%S.%fZ'),
+                'cid': op_event['cid'],
+            }
+            self_stat_created.append(event_dict)
+
+
+    # TODO:
+    # Self Engagement
+    # when self posts, get followers at time of post and add follower to users table with exposure + 1
+    # when self is shared, add sharer to users with engagement +1 and, if not follower, exposure +1
+    # + get followers of sharer DURING TIME OF SHARE and add (follower, increment 1) to total_exposed_accounts
+    self_engage_created = []
+    for op_event in ops[models.ids.AppBskyFeedPost]['created']:
+        record = op_event['record']
+        author = op_event['author']
+        if author != config.get_self():
+            continue
+        # get all followers at time of post
+
+
+    # Target Reposts
+    # when someone reposts, check if repost target is followed
+    # if so, check if reposter is follower
+    # if not, add repost to list
+    # also, add the reposter to the users table
+    target_reposts_created = []
+    for op_event in ops[models.ids.AppBskyFeedRepost]['created']:
+        record = op_event['record']
+
+        try:
+            via_uri = record.via.uri
+        except AttributeError as e:
+            via_uri = ""
+
+        if should_add_target_repost(op_event):
+
+            orig_uri = record.subject.uri
+            # the primary key should be the original post id
+            # if a new repost appears, do not update
+            post_dict = {
+                'uri': op_event['uri'],
+                'via_uri': via_uri,
+                'orig_uri': orig_uri,
+                'cid': op_event['cid'],
+                'created_at': datetime.datetime.strptime(record.created_at, '%Y-%m-%dT%H:%M:%S.%fZ'),
+            }
+            target_reposts_created.append(post_dict)
         
-        orig_uri = record.subject.uri
-        # the primary key should be the original post id
-        # if a new repost appears, do not update
-        post_dict = {
-            'uri': created_post['uri'],
-            'via_uri': via_uri,
-            'orig_uri': orig_uri,
-            'cid': created_post['cid'],
-        }
-        posts_to_create.append(post_dict)
+
+        if should_add_self_stat(op_event):
+            
+            event_dict = {
+                'uri': op_event['uri'],
+                'event_type': ENGAGEMENT_REPOST,
+                'create_delete': OP_CREATE,
+                'via_uri': via_uri,
+                'orig_uri': record.subject.uri,
+                'cid': op_event['cid'],
+                'created_at': datetime.datetime.strptime(record.created_at, '%Y-%m-%dT%H:%M:%S.%fZ'),
+            }
+            self_stat_created.append(event_dict)
+
+    if target_reposts_created:
+        with db.atomic():
+            for post_dict in target_reposts_created:
+                Repost.create(**post_dict)
+                author = post_dict['uri'].split('/')[2]
+                User.create(did=author)
+        logger.debug(f'Added to feed: {len(target_reposts_created)}')
 
     #posts_to_delete = ops[models.ids.AppBskyFeedRepost]['deleted']
     #if posts_to_delete:
@@ -143,8 +279,9 @@ def operations_callback(ops: defaultdict) -> None:
     #    Post.delete().where(Post.uri.in_(post_uris_to_delete))
     #    logger.debug(f'Deleted from feed: {len(post_uris_to_delete)}')
 
-    if posts_to_create:
+    if self_stat_created:
         with db.atomic():
-            for post_dict in posts_to_create:
-                Repost.create(**post_dict)
-        logger.debug(f'Added to feed: {len(posts_to_create)}')
+            for event_dict in self_stat_created:
+                Engagement.create(**event_dict)
+        logger.debug(f'Added to engagements: {len(self_stat_created)}')
+

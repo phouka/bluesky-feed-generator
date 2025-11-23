@@ -4,11 +4,12 @@ import threading
 
 from server import config
 from server import data_stream
+from server import alike_setup
 
 from flask import Flask, jsonify, request
 
 from server.algos import algos
-from server.data_filter import operations_callback
+from server import data_filter
 
 from server.auth import AuthorizationError, validate_auth
 
@@ -20,14 +21,22 @@ app = Flask(__name__)
 
 stream_stop_event = threading.Event()
 stream_thread = threading.Thread(
-    target=data_stream.run, args=(config.SERVICE_DID, operations_callback, stream_stop_event,)
+    target=data_stream.run, args=(config.SERVICE_DID, data_filter.operations_callback, stream_stop_event,)
 )
 stream_thread.start()
+
+
+period_agg_event = threading.Event()
+period_agg_thread = threading.Thread(
+    target=alike_setup.update_periodic,
+)
+period_agg_thread.start()
 
 
 def sigint_handler(*_):
     print('Stopping data stream...')
     stream_stop_event.set()
+    period_agg_event.set()
     sys.exit(0)
 
 
