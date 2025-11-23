@@ -6,10 +6,12 @@ from atproto import models
 
 from server import config
 from server.logger import logger
-from server.database import db, Repost, User, Engagement, Exposure
+from server.database import db, Repost, User, Engagement, MainPost, Exposure
 from server.database import watch_lookup, watch_list, ignore_lookup, ignore_list
 from server.database import OP_CREATE, OP_DELETE, ENGAGEMENT_LIKE, ENGAGEMENT_REPOST
 from server.client import client
+
+from server.alike_setup import get_follow_contents
 
 def extract_author(uri: str) -> str:
     url_parts = uri.split('/')
@@ -89,6 +91,24 @@ def should_add_target_repost(created_post: dict) -> bool:
 
     return True
 
+
+def should_add_self_post(created_event: dict) -> bool:
+
+    record = created_event['record']
+    author = created_event['author']
+
+    if config.IGNORE_ARCHIVED_POSTS and is_archive_post(record):
+        logger.debug(f'Ignoring archived post: {uri}')
+        return False
+
+    if config.IGNORE_REPLY_POSTS and record.reply:
+        logger.debug(f'Ignoring reply post: {uri}')
+        return False
+    
+    if author == config.get_self():
+        return True
+    
+    return False
 
 def should_add_self_stat(created_event: dict) -> bool:
 
@@ -224,13 +244,25 @@ def operations_callback(ops: defaultdict) -> None:
     # when self posts, get followers at time of post and add follower to users table with exposure + 1
     # when self is shared, add sharer to users with engagement +1 and, if not follower, exposure +1
     # + get followers of sharer DURING TIME OF SHARE and add (follower, increment 1) to total_exposed_accounts
-    self_engage_created = []
     for op_event in ops[models.ids.AppBskyFeedPost]['created']:
         record = op_event['record']
-        author = op_event['author']
-        if author != config.get_self():
+
+        if not should_add_self_post(op_event):
             continue
+
+        MainPost.create(
+            uri=op_event['uri'],
+            cid=op_event['cid'],
+            created_at=datetime.datetime.strptime(record.created_at, '%Y-%m-%dT%H:%M:%S.%fZ'),
+        )
         # get all followers at time of post
+        followers = User.select().where(User.follow_id != '')
+        with db.atomic():
+            total = 0
+            for follower in followers:
+                Exposure.create(uri=op_event['uri'], seen_by=follower.did)
+                total += 1
+            logger.debug(f'Added to exposure: {len(total)}')
 
 
     # Target Reposts
@@ -296,4 +328,12 @@ def operations_callback(ops: defaultdict) -> None:
             for event_dict in self_stat_created:
                 Engagement.create(**event_dict)
         logger.debug(f'Added to engagements: {len(self_stat_created)}')
+
+        # get all followers at time of post
+        for event_dict in self_stat_created:
+            if event_dict['event_type'] == ENGAGEMENT_REPOST:
+                followers = get_follow_contents(event_dict['author'])
+                with db.atomic():
+                    for follower in followers:
+                        Exposure.create(uri=event_dict['uri'], seen_by=follower.did)
 
