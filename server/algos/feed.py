@@ -31,13 +31,16 @@ def handler(cursor: Optional[str], limit: int) -> dict:
 
         
         for post in posts:
-            url_parts = post.orig_uri.split('/')
-            orig_author = url_parts[2]
+            author = post.uri.split('/')[2]
+            orig_author = post.orig_uri.split('/')[2]
 
             if orig_author in watch_list:
                 continue
             
             if orig_author in ignore_list:
+                continue
+            
+            if author in ignore_list:
                 continue
 
             feed_posts.append(post)

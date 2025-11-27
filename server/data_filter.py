@@ -44,6 +44,10 @@ def should_ignore_post(created_post: dict) -> bool:
     if author not in watch_list:
         logger.debug(f'Ignoring repost from unlisted author: {uri}')
         return True
+    
+    if author in ignore_list:
+        logger.debug(f'Ignoring repost from ignored author: {uri}')
+        return True
 
     # check subject against author in list, and filter out if in list
     orig_uri = record.subject.uri
