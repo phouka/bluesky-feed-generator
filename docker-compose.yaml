@@ -3,6 +3,8 @@ services:
     feed_gen:
         build:
             context: ./
+        volumes:
+            - ./feed_database.db:/app/feed_database.db
         ports:
             - "8000"
     
