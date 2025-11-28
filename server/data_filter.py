@@ -99,12 +99,15 @@ def operations_callback(ops: defaultdict) -> None:
     for created_post in ops[models.ids.AppBskyGraphListitem]['created']:
         # add to local list if the item is from the target list
         record_list = created_post['record'].list
-        list_item = created_post['uri']
+        list_item_uri = created_post['uri']
+        list_item = created_post['record'].subject
         for user_list in config.FOLLOW_LIST:
             if record_list == user_list:
+                watch_lookup[list_item_uri] = list_item
                 watch_list[list_item] = True
         for user_list in config.IGNORE_LIST:
             if record_list == user_list:
+                ignore_lookup[list_item_uri] = list_item
                 ignore_list[list_item] = True
 
     for post in ops[models.ids.AppBskyGraphListitem]['deleted']:
