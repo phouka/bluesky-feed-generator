@@ -147,15 +147,18 @@ def should_add_busy_notif(created_event: dict) -> bool:
     return False
 
 def operations_callback(ops: defaultdict) -> None:
-    for op_event in ops[models.ids.AppBskyGraphListitem]['created']:
+    for created_post in ops[models.ids.AppBskyGraphListitem]['created']:
         # add to local list if the item is from the target list
-        record_list = op_event['record'].list
-        list_item = op_event['uri']
+        record_list = created_post['record'].list
+        list_item_uri = created_post['uri']
+        list_item = created_post['record'].subject
         for user_list in config.FOLLOW_LIST:
             if record_list == user_list:
+                watch_lookup[list_item_uri] = list_item
                 watch_list[list_item] = True
         for user_list in config.IGNORE_LIST:
             if record_list == user_list:
+                ignore_lookup[list_item_uri] = list_item
                 ignore_list[list_item] = True
 
     for op_event in ops[models.ids.AppBskyGraphListitem]['deleted']:
