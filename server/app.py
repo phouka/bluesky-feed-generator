@@ -20,7 +20,7 @@ app = Flask(__name__)
 
 stream_stop_event = threading.Event()
 stream_thread = threading.Thread(
-    target=data_stream.run, args=(config.SERVICE_DID, operations_callback, stream_stop_event,)
+    target=data_stream.run, args=("cursor", operations_callback, stream_stop_event,)
 )
 stream_thread.start()
 

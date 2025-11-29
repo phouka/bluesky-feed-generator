@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import peewee
 
@@ -18,7 +18,7 @@ class Post(BaseModel):
     orig_uri = peewee.CharField(index=True)
     uri = peewee.CharField()
     cid = peewee.CharField()
-    indexed_at = peewee.DateTimeField(default=datetime.utcnow)
+    indexed_at = peewee.FloatField(default=datetime.now(timezone.utc).timestamp)
 
 # this keeps track of where in the firehose the events were last read
 # this allows the system to catch up to the stream after a restart

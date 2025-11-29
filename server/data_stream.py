@@ -7,7 +7,7 @@ from atproto.exceptions import FirehoseError
 from server import config
 from server.database import SubscriptionState
 from server.logger import logger
-import share_setup
+from server import share_setup
 
 _INTERESTED_RECORDS = {
     models.AppBskyFeedRepost: models.ids.AppBskyFeedRepost,
