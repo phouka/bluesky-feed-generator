@@ -4,7 +4,7 @@ set -x
 
 # Source the .env file
 if [ -f .env.nginx ]; then
-  export $(grep -v '^#' .env | xargs)
+  export $(grep -v '^#' .env.nginx | xargs)
 fi
 
 if ! [ -x "$(command -v docker compose)" ]; then
