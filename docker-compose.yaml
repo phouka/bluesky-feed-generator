@@ -1,0 +1,29 @@
+
+services:
+    feed_gen:
+        build:
+            context: ./
+        volumes:
+            - ./feed_database.db:/app/feed_database.db
+        ports:
+            - "8000"
+    
+    nginx:
+        image: nginx:latest
+        env_file: .env.nginx
+        volumes:
+            - ./nginx/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+            - ./nginx/certbot/conf:/etc/letsencrypt
+            - ./nginx/certbot/www:/var/www/certbot
+        depends_on:
+            - feed_gen
+        ports:
+            - "80:80"
+            - "443:443"
+            
+    certbot:
+        image: certbot/certbot
+        volumes:
+            - ./nginx/certbot/conf:/etc/letsencrypt
+            - ./nginx/certbot/www:/var/www/certbot
+        entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 24h & wait $${!}; done;'" # renew certificates daily
