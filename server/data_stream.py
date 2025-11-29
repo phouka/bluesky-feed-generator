@@ -104,6 +104,10 @@ def run(name, operations_callback, stream_stop_event=None):
             ignore_lookup[item.uri] = item.subject.did
             ignore_list[item.subject.did] = True
     
+    if config.DISABLE_JOBS:
+        logger.info('Firehose fetching is disabled via configuration.')
+        return
+
     while stream_stop_event is None or not stream_stop_event.is_set():
         try:
             _run(name, operations_callback, stream_stop_event)

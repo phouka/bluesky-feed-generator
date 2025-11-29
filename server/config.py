@@ -45,6 +45,11 @@ def _get_bool_env_var(value: str) -> bool:
 
     return False
 
+DISABLE_JOBS = _get_bool_env_var(os.environ.get('DISABLE_JOBS'))
+DEBUG_FEED = _get_bool_env_var(os.environ.get('DEBUG_FEED'))
 
 IGNORE_ARCHIVED_POSTS = _get_bool_env_var(os.environ.get('IGNORE_ARCHIVED_POSTS'))
 IGNORE_REPLY_POSTS = _get_bool_env_var(os.environ.get('IGNORE_REPLY_POSTS'))
+
+def get_self() -> str:
+    return FOLLOW_LIST[0].split('/')[2]

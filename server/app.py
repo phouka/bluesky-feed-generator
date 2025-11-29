@@ -71,7 +71,10 @@ def describe_feed_generator():
 
 @app.route('/xrpc/app.bsky.feed.getFeedSkeleton', methods=['GET'])
 def get_feed_skeleton():
-    feed_id = request.args.get('feed', default=None, type=str)
+    if config.DEBUG_FEED:
+        feed_id = next(iter(algos))
+    else:
+        feed_id = request.args.get('feed', default=None, type=str)
     algo = algos.get(feed_id)
     if not algo:
         return 'Unsupported algorithm', 400
@@ -79,14 +82,14 @@ def get_feed_skeleton():
     algo_owner = feed_id.split('/')[2]
 
     # check auth if giving user-specific results:
-    
-    try:
-        requester_did = validate_auth(request)
+    if not config.DEBUG_FEED:
+        try:
+            requester_did = validate_auth(request)
 
-        if requester_did not in config.USER_LIST:
+            if requester_did not in config.USER_LIST:
+                return 'Unauthorized', 401
+        except AuthorizationError:
             return 'Unauthorized', 401
-    except AuthorizationError:
-        return 'Unauthorized', 401
 
     try:
         cursor = request.args.get('cursor', default=None, type=str)
