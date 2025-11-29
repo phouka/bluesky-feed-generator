@@ -11,7 +11,7 @@ HANDLE = os.environ.get('HANDLE')
 APP_PASS = os.environ.get('PASSWORD')
 
 SERVICE_DID = os.environ.get('SERVICE_DID')
-HOSTNAME = os.environ.get('HOSTNAME')
+HOSTNAME = os.environ.get('APP_HOSTNAME')
 FLASK_RUN_FROM_CLI = os.environ.get('FLASK_RUN_FROM_CLI')
 
 if FLASK_RUN_FROM_CLI:
