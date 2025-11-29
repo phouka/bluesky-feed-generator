@@ -18,7 +18,7 @@ if FLASK_RUN_FROM_CLI:
     logger.setLevel(logging.DEBUG)
 
 if not HOSTNAME:
-    raise RuntimeError('You should set "HOSTNAME" environment variable first.')
+    raise RuntimeError('You should set "APP_HOSTNAME" environment variable first.')
 
 if not SERVICE_DID:
     SERVICE_DID = f'did:web:{HOSTNAME}'
