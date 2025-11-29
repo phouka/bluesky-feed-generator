@@ -7,8 +7,7 @@ from atproto.exceptions import FirehoseError
 from server import config
 from server.database import SubscriptionState
 from server.logger import logger
-from server.database import watch_lookup, watch_list, ignore_lookup, ignore_list
-from server.client import client
+import share_setup
 
 _INTERESTED_RECORDS = {
     models.AppBskyFeedRepost: models.ids.AppBskyFeedRepost,
@@ -54,55 +53,9 @@ def _get_ops_by_type(commit: models.ComAtprotoSyncSubscribeRepos.Commit) -> defa
     return operation_by_type
 
 
-import time
-def get_list_contents(list_uri: str) -> dict:
-    users = []
-    cursor = None
-    while True:
-        new_list = client.app.bsky.graph.get_list(models.AppBskyGraphGetList.Params(list=list_uri, cursor=cursor, limit=100))
-        for item in new_list.items:
-            users.append(item)
-        if new_list.cursor is None:
-            break
-        time.sleep(0.1)
-        cursor = new_list.cursor
-    return users
-
-from atproto_identity.resolver import IdResolver
-
 def run(name, operations_callback, stream_stop_event=None):
-    """
-    created_list_item = client.app.bsky.graph.listitem.create(
-        list_owner,
-        models.AppBskyGraphListitem.Record(
-            list=shares_uncategorized,
-            subject=user,
-            created_at=client.get_current_time_iso(),
-        ),
-    )
-    deleted_list_item = client.app.bsky.graph.listitem.delete(
-        list_owner,
-        AtUri.from_str(user).rkey,
-    )
-    """
 
-    # create the author share watch list
-    watch_lookup.clear()
-    watch_list.clear()
-    for user_list in config.FOLLOW_LIST:
-        list_items = get_list_contents(user_list)
-        for item in list_items:
-            watch_lookup[item.uri] = item.subject.did
-            watch_list[item.subject.did] = True
-
-    # create the ignore list
-    ignore_lookup.clear()
-    ignore_list.clear()
-    for user_list in config.IGNORE_LIST:
-        list_items = get_list_contents(user_list)
-        for item in list_items:
-            ignore_lookup[item.uri] = item.subject.did
-            ignore_list[item.subject.did] = True
+    share_setup.setup() 
     
     if config.DISABLE_JOBS:
         logger.info('Firehose fetching is disabled via configuration.')
