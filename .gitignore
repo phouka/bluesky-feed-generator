@@ -3,6 +3,7 @@
 .idea
 *.iml
 .env
+.env.*
 *.db
 
 # Byte-compiled / optimized / DLL files
