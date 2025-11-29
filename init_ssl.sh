@@ -35,7 +35,7 @@ fi
 echo "### Creating dummy certificate for $domains ..."
 path="/etc/letsencrypt/live/$domains"
 mkdir -p "$data_path/conf/live/$domains"
-docker compose -f "docker-compose.yml" run --rm --entrypoint "\
+docker compose -f "docker-compose.yaml" run --rm --entrypoint "\
   openssl req -x509 -nodes -newkey rsa:$rsa_key_size -days 1\
     -keyout '$path/privkey.pem' \
     -out '$path/fullchain.pem' \
@@ -43,7 +43,7 @@ docker compose -f "docker-compose.yml" run --rm --entrypoint "\
 echo
 
 echo "### Starting nginx ..."
-docker compose  -f "docker-compose.yml" up --force-recreate -d nginx
+docker compose  -f "docker-compose.yaml" up --force-recreate -d nginx
 echo
 
 echo "### Deleting dummy certificate for $domains ..."
