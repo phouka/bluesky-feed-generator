@@ -11,7 +11,7 @@ def compute_cursor(posts) -> str:
     if not posts:
         return CURSOR_EOF
     last_post = posts[-1]
-    return f'{int(last_post.indexed_at.timestamp() * 1000)}::{last_post.cid}'
+    return f'{last_post.indexed_at}::{last_post.cid}'
 
 def handler(cursor: Optional[str], limit: int) -> dict:
 
@@ -26,7 +26,6 @@ def handler(cursor: Optional[str], limit: int) -> dict:
                 raise ValueError('Malformed cursor')
 
             indexed_at, cid = cursor_parts
-            indexed_at = datetime.fromtimestamp(int(indexed_at) / 1000)
             posts = posts.where(((Post.indexed_at == indexed_at) & (Post.cid < cid)) | (Post.indexed_at < indexed_at))
 
         

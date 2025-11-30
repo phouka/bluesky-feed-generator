@@ -1,3 +1,4 @@
+from server import config
 from datetime import datetime, timezone
 
 import peewee
@@ -8,7 +9,7 @@ watch_list = {}
 ignore_lookup = {}
 ignore_list = {}
 
-db = peewee.PostgresqlDatabase('mydatabase', host='localhost', port=5432, user='admin', password='secret')
+db = peewee.PostgresqlDatabase(config.DB_NAME, host='localhost', port=config.DB_PORT, user=config.DB_USER, password=config.DB_PASS)
 
 class BaseModel(peewee.Model):
     class Meta:

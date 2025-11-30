@@ -1,12 +1,9 @@
 
-from server.database import watch_lookup, watch_list, ignore_lookup, ignore_list, Post
+from server.database import watch_lookup, watch_list, ignore_lookup, ignore_list
 from server.client import client
 from server.logger import logger
 from atproto import models
 from server import config
-
-from server.database_sqlite import Post as Post_sqlite, SubscriptionState as SubscriptionState_sqlite
-from server.database import Post, SubscriptionState
 
 import time
 
@@ -39,23 +36,6 @@ def setup():
         AtUri.from_str(user).rkey,
     )
     """
-
-
-    posts = Post_sqlite.select()
-    for post in posts:
-        Post.create(
-            orig_uri=post.orig_uri,
-            uri=post.uri,
-            cid=post.cid,
-            indexed_at=post.indexed_at,
-        )
-
-    subs = SubscriptionState_sqlite.select()
-    for sub in subs:
-        SubscriptionState.create(
-            service=sub.service,
-            cursor=sub.cursor,
-        )
 
     # create the author share watch list
     watch_lookup.clear()
