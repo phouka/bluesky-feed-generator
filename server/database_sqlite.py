@@ -1,14 +1,7 @@
 from datetime import datetime, timezone
-
 import peewee
 
-watch_lookup = {}
-watch_list = {}
-
-ignore_lookup = {}
-ignore_list = {}
-
-db = peewee.PostgresqlDatabase('mydatabase', host='localhost', port=5432, user='admin', password='secret')
+db = peewee.SqliteDatabase('feed_database.db')
 
 class BaseModel(peewee.Model):
     class Meta:
