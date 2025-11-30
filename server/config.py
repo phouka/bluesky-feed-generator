@@ -36,6 +36,7 @@ FOLLOW_LIST = os.environ.get('FOLLOW_LIST', '').split(',')
 IGNORE_LIST = os.environ.get('IGNORE_LIST', '').split(',')
 
 DB_NAME = os.environ.get('DB_NAME')
+DB_HOST = os.environ.get('DB_HOST')
 DB_PORT = int(os.environ.get('DB_PORT'))
 DB_USER = os.environ.get('DB_USER')
 DB_PASS = os.environ.get('DB_PASS')

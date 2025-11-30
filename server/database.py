@@ -9,7 +9,7 @@ watch_list = {}
 ignore_lookup = {}
 ignore_list = {}
 
-db = peewee.PostgresqlDatabase(config.DB_NAME, host='localhost', port=config.DB_PORT, user=config.DB_USER, password=config.DB_PASS)
+db = peewee.PostgresqlDatabase(config.DB_NAME, host=config.DB_HOST, port=config.DB_PORT, user=config.DB_USER, password=config.DB_PASS)
 
 class BaseModel(peewee.Model):
     class Meta:
