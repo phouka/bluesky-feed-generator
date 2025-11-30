@@ -7,10 +7,7 @@ if [ -f .env.nginx ]; then
   export $(grep -v '^#' .env.nginx | xargs)
 fi
 
-if ! [ -x "$(command -v docker compose)" ]; then
-    echo 'Error: docker compose is not installed.' >&2
-    exit 1
-fi
+is_debug=$1
 
 domains=(${APP_DOMAIN})
 rsa_key_size=4096
@@ -41,6 +38,11 @@ docker compose -f "docker-compose.yaml" run --rm --entrypoint "\
     -out '$path/fullchain.pem' \
     -subj '/CN=localhost'" certbot
 echo
+
+if [ "$is_debug" == "--debug" ]; then
+  echo "### Debug mode: Skipping nginx start and certificate issuance."
+  exit 0
+fi
 
 echo "### Starting nginx ..."
 docker compose  -f "docker-compose.yaml" up --force-recreate -d nginx
