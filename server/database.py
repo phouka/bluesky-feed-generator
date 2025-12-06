@@ -19,7 +19,7 @@ class Post(BaseModel):
     orig_uri = peewee.CharField(index=True)
     uri = peewee.CharField()
     cid = peewee.CharField()
-    indexed_at = peewee.BigIntegerField(default=int(datetime.now(timezone.utc).timestamp() * 1000))
+    indexed_at = peewee.BigIntegerField(default=lambda: int(datetime.now(timezone.utc).timestamp() * 1000))
 
 # this keeps track of where in the firehose the events were last read
 # this allows the system to catch up to the stream after a restart
