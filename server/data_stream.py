@@ -68,8 +68,6 @@ def run(name, operations_callback, stream_stop_event=None):
                 raise e
             logger.error(f'Firehose error: {e}. Reconnecting to the firehose.')
 
-        alike_setup.update_periodic()
-
 
 def _run(name, operations_callback, stream_stop_event=None):
     state = SubscriptionState.get_or_none(SubscriptionState.service == name)

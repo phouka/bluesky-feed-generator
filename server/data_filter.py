@@ -96,6 +96,7 @@ def should_add_self_post(created_event: dict) -> bool:
 
     record = created_event['record']
     author = created_event['author']
+    uri = created_event['uri']
 
     if config.IGNORE_ARCHIVED_POSTS and is_archive_post(record):
         logger.debug(f'Ignoring archived post: {uri}')
