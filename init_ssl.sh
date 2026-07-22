@@ -38,7 +38,11 @@ fi
 echo "### Creating dummy certificate for $domains ..."
 path="/etc/letsencrypt/live/$domains"
 mkdir -p "$data_path/conf/live/$domains"
-docker compose -f "docker-compose.yaml" run --rm --entrypoint "openssl req -x509 -nodes -newkey rsa:4096 -days 1 -keyout '/etc/letsencrypt/live/share.alchemono.org/privkey.pem' -out '/etc/letsencrypt/live/share.alchemono.org/fullchain.pem' -subj '/CN=localhost'" certbot
+docker compose -f "docker-compose.yaml" run --rm --entrypoint "\
+  openssl req -x509 -nodes -newkey rsa:$rsa_key_size -days 1\
+    -keyout '$path/privkey.pem' \
+    -out '$path/fullchain.pem' \
+    -subj '/CN=localhost'" certbot
 echo
 
 if [ "$is_debug" == "--debug" ]; then
@@ -47,7 +51,7 @@ if [ "$is_debug" == "--debug" ]; then
 fi
 
 echo "### Starting nginx ..."
-docker compose  -f "docker-compose.yaml" up --force-recreate nginx
+docker compose  -f "docker-compose.yaml" up --force-recreate -d nginx
 echo
 
 echo "### Deleting dummy certificate for $domains ..."
