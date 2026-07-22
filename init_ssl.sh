@@ -23,18 +23,8 @@ fi
 
 if [ ! -e "$data_path/conf/options-ssl-nginx.conf" ] || [ ! -e "$data_path/conf/ssl-dhparams.pem" ]; then
     echo "### Downloading recommended TLS parameters ..."
-    mkdir -p "$data_path/conf"
-    ret=$(curl -s -w "%{http_code}" -o "$data_path/conf/options-ssl-nginx.conf" "https://raw.githubusercontent.com/certbot/certbot/master/certbot-nginx/certbot_nginx/src/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf")
-    if [ "$ret" -ne 200 ]; then
-      echo "FAILED: Could not get resource from certbot github"
-      exit 1;
-    fi
-    ret=$(curl -s -w "%{http_code}" -o "$data_path/conf/ssl-dhparams.pem" "https://raw.githubusercontent.com/certbot/certbot/master/src/certbot/certbot/ssl-dhparams.pem")
-    if [ "$ret" -ne 200 ]; then
-      echo "FAILED: Could not get resource from certbot github"
-      exit 1;
-    fi
-    echo
+    cp "./nginx/options-ssl-nginx.conf" "$data_path/conf/options-ssl-nginx.conf"
+    cp "./nginx/ssl-dhparams.pem" "$data_path/conf/ssl-dhparams.pem"
 fi
 
 echo "### Creating dummy certificate for $domains ..."
