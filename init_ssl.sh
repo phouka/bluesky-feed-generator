@@ -7,10 +7,7 @@ if [ -f .env.nginx ]; then
   export $(grep -v '^#' .env.nginx | xargs)
 fi
 
-if ! [ -x "$(command -v docker compose)" ]; then
-    echo 'Error: docker compose is not installed.' >&2
-    exit 1
-fi
+is_debug=$1
 
 domains=(${APP_DOMAIN})
 rsa_key_size=4096
@@ -27,9 +24,8 @@ fi
 if [ ! -e "$data_path/conf/options-ssl-nginx.conf" ] || [ ! -e "$data_path/conf/ssl-dhparams.pem" ]; then
     echo "### Downloading recommended TLS parameters ..."
     mkdir -p "$data_path/conf"
-    curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot-nginx/certbot_nginx/_internal/tls_configs/options-ssl-nginx.conf >"$data_path/conf/options-ssl-nginx.conf"
-    curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot/certbot/ssl-dhparams.pem >"$data_path/conf/ssl-dhparams.pem"
-    echo
+    cp "./nginx/options-ssl-nginx.conf" "$data_path/conf/options-ssl-nginx.conf"
+    cp "./nginx/ssl-dhparams.pem" "$data_path/conf/ssl-dhparams.pem"
 fi
 
 echo "### Creating dummy certificate for $domains ..."
@@ -41,6 +37,11 @@ docker compose -f "docker-compose.yaml" run --rm --entrypoint "\
     -out '$path/fullchain.pem' \
     -subj '/CN=localhost'" certbot
 echo
+
+if [ "$is_debug" == "--debug" ]; then
+  echo "### Debug mode: Skipping nginx start and certificate issuance."
+  exit 0
+fi
 
 echo "### Starting nginx ..."
 docker compose  -f "docker-compose.yaml" up --force-recreate -d nginx
