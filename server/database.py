@@ -1,26 +1,7 @@
+from server import config
 from datetime import datetime
 
 import peewee
-
-db = peewee.SqliteDatabase('feed_database.db')
-watch_lookup = {}
-watch_list = {}
-
-ignore_lookup = {}
-ignore_list = {}
-
-class BaseModel(peewee.Model):
-    class Meta:
-        database = db
-
-
-class Repost(BaseModel):
-    uri = peewee.CharField(index=True)
-    via_uri = peewee.CharField()
-    orig_uri = peewee.CharField()
-    cid = peewee.CharField()
-    created_at = peewee.DateTimeField()
-    indexed_at = peewee.DateTimeField(default=datetime.utcnow)
 
 OP_CREATE = 0
 OP_DELETE = 1
@@ -31,6 +12,26 @@ ENGAGEMENT_REPOST = 1
 AGG_FOLLOWER = 0
 AGG_LIKE = 1
 AGG_REPOST = 2
+
+watch_lookup = {}
+watch_list = {}
+
+ignore_lookup = {}
+ignore_list = {}
+
+db = peewee.PostgresqlDatabase(config.DB_NAME, host=config.DB_HOST, port=config.DB_PORT, user=config.DB_USER, password=config.DB_PASS)
+
+class BaseModel(peewee.Model):
+    class Meta:
+        database = db
+
+class Repost(BaseModel):
+    uri = peewee.CharField(index=True)
+    via_uri = peewee.CharField()
+    orig_uri = peewee.CharField()
+    cid = peewee.CharField()
+    created_at = peewee.DateTimeField()
+    indexed_at = peewee.DateTimeField(default=datetime.utcnow)
 
 class MainPost(BaseModel):
 

@@ -4,6 +4,7 @@ from collections import defaultdict
 from atproto import AtUri, CAR, firehose_models, FirehoseSubscribeReposClient, models, parse_subscribe_repos_message
 from atproto.exceptions import FirehoseError
 
+from server import config
 from server.database import SubscriptionState
 from server.logger import logger
 from server import alike_setup
@@ -59,6 +60,10 @@ def _get_ops_by_type(commit: models.ComAtprotoSyncSubscribeRepos.Commit) -> defa
 def run(name, operations_callback, stream_stop_event=None):
 
     alike_setup.setup()
+    
+    if config.DISABLE_JOBS:
+        logger.info('Firehose fetching is disabled via configuration.')
+        return
     
     while stream_stop_event is None or not stream_stop_event.is_set():
         try:

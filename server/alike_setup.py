@@ -58,9 +58,8 @@ def get_follow_uri(follower_did: str, did_to_follow: str) -> dict:
         logger.error(f'Error getting follow URI for {follower_did} -> {did_to_follow}: {e}')
     return None
 
-
-
 def setup():
+
 
     """
     created_list_item = client.app.bsky.graph.listitem.create(
@@ -76,7 +75,6 @@ def setup():
         AtUri.from_str(user).rkey,
     )
     """
-
 
     # tables:
     # engagement event: type(like/repost), uri, target uri, create/delete, timestamp; last hour of self-targeted events are counted and taken every hour.  records older than 1 month purged
