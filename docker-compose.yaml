@@ -16,9 +16,10 @@ services:
             - db
         ports:
             - "8000"
-    
+
     nginx:
         image: nginx:latest
+        restart: unless-stopped
         env_file: .env.nginx
         volumes:
             - ./nginx/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
